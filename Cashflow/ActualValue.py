@@ -3,7 +3,7 @@ from snowflake.snowpark.functions import col
 import pandas as pd
 
 # Load and Prepare Actuals
-#comment jennifer saucedo
+
 def load_actuals_with_invoice_date(session: snowpark.Session):
     
     # Function to standardize column selection from different actuals sources
