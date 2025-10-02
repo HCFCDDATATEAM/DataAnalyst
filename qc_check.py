@@ -36,15 +36,202 @@ def get_unique_keys(session, table, keys):
     return df.select(keys).distinct().count()
 
 def main(session: snowpark.Session):
+    import pandas as pd
+    try:
+        keys = ["PROJECT_NUMBER", "STAGE", "SUB_STAGE"]
+        print("\n---\nQC Next Steps & Example Problem Outputs")
+        # 1. Review projects with actuals but no planned values
+        # Collect all outputs in a list for export
+        output_lines = []
+        def log(line):
+            print(line)
+            output_lines.append(str(line))
+
+        def analyze_problem_projects_export(session):
+            problem_projects = [
+                {"PROJECT_NUMBER": "K124-00-00-X041", "STAGE": None, "SUB_STAGE": None},
+                {"PROJECT_NUMBER": "P118-25-00-E001", "STAGE": None, "SUB_STAGE": None},
+                {"PROJECT_NUMBER": "A120-00-00-C003", "STAGE": None, "SUB_STAGE": None},
+            ]
+            keys = ["PROJECT_NUMBER", "STAGE", "SUB_STAGE"]
+            log("\n---\nAdvanced Project Analytics & Example Outputs")
+            actual_keys = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.ACTUALVALUE").select(keys).distinct()
+            planned_keys = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.PLANNEDVALUE").select(keys).distinct()
+            forecast_keys = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.FORECASTVALUE").select(keys).distinct()
+            for proj in problem_projects:
+                pn = proj["PROJECT_NUMBER"]
+                log(f"\nProject: {pn}")
+                actual_df = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.ACTUALVALUE").filter(col("PROJECT_NUMBER") == pn)
+                actual_rows = actual_df.limit(5).collect()
+                log("ACTUALVALUE (first 5 rows):")
+                for row in actual_rows:
+                    log(row)
+                planned_df = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.PLANNEDVALUE").filter(col("PROJECT_NUMBER") == pn)
+                planned_rows = planned_df.limit(5).collect()
+                log("PLANNEDVALUE (first 5 rows):")
+                for row in planned_rows:
+                    log(row)
+                forecast_df = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.FORECASTVALUE").filter(col("PROJECT_NUMBER") == pn)
+                forecast_rows = forecast_df.limit(5).collect()
+                log("FORECASTVALUE (first 5 rows):")
+                for row in forecast_rows:
+                    log(row)
+                combined_df = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.COMBINED_CURVES").filter(col("PROJECT_NUMBER") == pn)
+                combined_rows = combined_df.limit(5).collect()
+                log("COMBINED_CURVES (first 5 rows):")
+                for row in combined_rows:
+                    log(row)
+                if not planned_rows:
+                    log("Warning: No planned values found for this project.")
+                if not actual_rows:
+                    log("Warning: No actual values found for this project.")
+                if not forecast_rows:
+                    log("Warning: No forecast values found for this project.")
+                def safe_null_count(df, colname):
+                    try:
+                        if colname in [c.name for c in df.schema.fields]:
+                            return df.filter(col(colname).is_null()).count()
+                        else:
+                            log(f"Column {colname} not found in table for project {pn}.")
+                            return "N/A"
+                    except Exception as e:
+                        log(f"Error checking nulls for {colname}: {e}")
+                        return "Error"
+                null_actuals = safe_null_count(actual_df, "ACTUAL_COST") if actual_rows else 0
+                null_planned = safe_null_count(planned_df, "PLANNED_COST") if planned_rows else 0
+                null_forecast = safe_null_count(forecast_df, "FORECAST_COST") if forecast_rows else 0
+                log(f"Null ACTUAL_COST rows: {null_actuals}")
+                log(f"Null PLANNED_COST rows: {null_planned}")
+                log(f"Null FORECAST_COST rows: {null_forecast}")
+                def safe_max(df, colname):
+                    try:
+                        if colname in [c.name for c in df.schema.fields]:
+                            return df.agg({colname: "max"}).collect()[0][0]
+                        else:
+                            log(f"Column {colname} not found in table for project {pn}.")
+                            return "N/A"
+                    except Exception as e:
+                        log(f"Error checking max for {colname}: {e}")
+                        return "Error"
+                max_actual = safe_max(actual_df, "ACTUAL_COST") if actual_rows else None
+                max_planned = safe_max(planned_df, "PLANNED_COST") if planned_rows else None
+                max_forecast = safe_max(forecast_df, "FORECAST_COST") if forecast_rows else None
+                log(f"Max ACTUAL_COST: {max_actual}")
+                log(f"Max PLANNED_COST: {max_planned}")
+                log(f"Max FORECAST_COST: {max_forecast}")
+            log("\n---\nEnd of advanced analytics for problem projects.")
+
+        analyze_problem_projects_export(session)
+        actual_keys = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.ACTUALVALUE").select(keys).distinct()
+        planned_keys = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.PLANNEDVALUE").select(keys).distinct()
+        missing_in_planned = actual_keys.subtract(planned_keys)
+        log("\nProjects with actuals but no planned values (examples):")
+        for row in missing_in_planned.limit(5).collect():
+            log(row)
+        # ...existing code for other gap checks, replace print with log...
+        summary = []
+        # ...existing code for summary table...
+        # At the end, print all output_lines as text and return as a single string column
+        full_output = "\n".join(output_lines)
+        print("\n--- QC FULL OUTPUT ---\n")
+        print(full_output)
+        summary_df = pd.DataFrame(summary)
+        if 'Unique Keys' in summary_df.columns:
+            summary_df['Unique Keys'] = summary_df['Unique Keys'].astype(str)
+        log(summary_df)
+        if not summary:
+            return session.create_dataframe(pd.DataFrame({"QC_OUTPUT": [full_output]}))
+        return session.create_dataframe(summary_df)
+    except Exception as e:
+        # Always return a DataFrame with error message if something fails
+        return session.create_dataframe(pd.DataFrame({"QC_ERROR": [str(e)]}))
+def analyze_problem_projects(session):
+    """
+    Advanced analytics for three problem projects, with example outputs.
+    Projects: K124-00-00-X041, P118-25-00-E001, A120-00-00-C003
+    """
+    problem_projects = [
+        {"PROJECT_NUMBER": "K124-00-00-X041", "STAGE": None, "SUB_STAGE": None},
+        {"PROJECT_NUMBER": "P118-25-00-E001", "STAGE": None, "SUB_STAGE": None},
+        {"PROJECT_NUMBER": "A120-00-00-C003", "STAGE": None, "SUB_STAGE": None},
+    ]
     keys = ["PROJECT_NUMBER", "STAGE", "SUB_STAGE"]
-    print("\n---\nQC Next Steps & Example Problem Outputs")
-    # 1. Review projects with actuals but no planned values
-    print("\nProjects with actuals but no planned values (examples):")
+    print("\n---\nAdvanced Project Analytics & Example Outputs")
+    # Prepare keys for gap checks
     actual_keys = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.ACTUALVALUE").select(keys).distinct()
     planned_keys = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.PLANNEDVALUE").select(keys).distinct()
-    missing_in_planned = actual_keys.subtract(planned_keys)
-    for row in missing_in_planned.limit(5).collect():
-        print(row)
+    forecast_keys = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.FORECASTVALUE").select(keys).distinct()
+
+    for proj in problem_projects:
+        pn = proj["PROJECT_NUMBER"]
+        print(f"\nProject: {pn}")
+        # ACTUALVALUE details
+        actual_df = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.ACTUALVALUE").filter(col("PROJECT_NUMBER") == pn)
+        actual_rows = actual_df.limit(5).collect()
+        print("ACTUALVALUE (first 5 rows):")
+        for row in actual_rows:
+            print(row)
+        # PLANNEDVALUE details
+        planned_df = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.PLANNEDVALUE").filter(col("PROJECT_NUMBER") == pn)
+        planned_rows = planned_df.limit(5).collect()
+        print("PLANNEDVALUE (first 5 rows):")
+        for row in planned_rows:
+            print(row)
+        # FORECASTVALUE details
+        forecast_df = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.FORECASTVALUE").filter(col("PROJECT_NUMBER") == pn)
+        forecast_rows = forecast_df.limit(5).collect()
+        print("FORECASTVALUE (first 5 rows):")
+        for row in forecast_rows:
+            print(row)
+        # COMBINED_CURVES details
+        combined_df = session.table("FCD_090_DB_DEV.PROJECT_CASHFLOW_DATA.COMBINED_CURVES").filter(col("PROJECT_NUMBER") == pn)
+        combined_rows = combined_df.limit(5).collect()
+        print("COMBINED_CURVES (first 5 rows):")
+        for row in combined_rows:
+            print(row)
+        # Anomaly checks: missing planned/actual/forecast
+        if not planned_rows:
+            print("Warning: No planned values found for this project.")
+        if not actual_rows:
+            print("Warning: No actual values found for this project.")
+        if not forecast_rows:
+            print("Warning: No forecast values found for this project.")
+        # Nulls/outliers with column existence check
+        def safe_null_count(df, colname):
+            try:
+                if colname in [c.name for c in df.schema.fields]:
+                    return df.filter(col(colname).is_null()).count()
+                else:
+                    print(f"Column {colname} not found in table for project {pn}.")
+                    return "N/A"
+            except Exception as e:
+                print(f"Error checking nulls for {colname}: {e}")
+                return "Error"
+        null_actuals = safe_null_count(actual_df, "ACTUAL_COST") if actual_rows else 0
+        null_planned = safe_null_count(planned_df, "PLANNED_COST") if planned_rows else 0
+        null_forecast = safe_null_count(forecast_df, "FORECAST_COST") if forecast_rows else 0
+        print(f"Null ACTUAL_COST rows: {null_actuals}")
+        print(f"Null PLANNED_COST rows: {null_planned}")
+        print(f"Null FORECAST_COST rows: {null_forecast}")
+        # Outlier detection (example: very high planned/actual/forecast)
+        def safe_max(df, colname):
+            try:
+                if colname in [c.name for c in df.schema.fields]:
+                    return df.agg({colname: "max"}).collect()[0][0]
+                else:
+                    print(f"Column {colname} not found in table for project {pn}.")
+                    return "N/A"
+            except Exception as e:
+                print(f"Error checking max for {colname}: {e}")
+                return "Error"
+        max_actual = safe_max(actual_df, "ACTUAL_COST") if actual_rows else None
+        max_planned = safe_max(planned_df, "PLANNED_COST") if planned_rows else None
+        max_forecast = safe_max(forecast_df, "FORECAST_COST") if forecast_rows else None
+        print(f"Max ACTUAL_COST: {max_actual}")
+        print(f"Max PLANNED_COST: {max_planned}")
+        print(f"Max FORECAST_COST: {max_forecast}")
+
+    print("\n---\nEnd of advanced analytics for problem projects.")
 
     # 2. Projects with planned values but no actuals
     print("\nProjects with planned values but no actuals (examples):")
@@ -163,7 +350,10 @@ def main(session: snowpark.Session):
     if 'Unique Keys' in summary_df.columns:
         summary_df['Unique Keys'] = summary_df['Unique Keys'].astype(str)
     print(summary_df)
-    # Return summary as a Snowpark DataFrame for worksheet compatibility
+    # Always return a Snowpark DataFrame, even if summary is empty
+    if not summary:
+        # Return a simple DataFrame with a message
+        return session.create_dataframe(pd.DataFrame({"QC_STATUS": ["QC checks completed. See console output for details."]}))
     return session.create_dataframe(summary_df)
 
 if __name__ == "__main__":

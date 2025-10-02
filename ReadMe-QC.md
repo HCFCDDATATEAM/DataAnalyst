@@ -164,9 +164,99 @@ Projects missing in COMBINED_CURVES: 0
 
 ## Next Steps
 
-- Review projects with actuals but no planned values, and vice versa, for completeness.
-- Confirm that the low forecast coverage matches business requirements.
-- Use the QC script to further investigate gaps and ensure data integrity across all ETL stages.
+
+## Advanced Project Analytics: Deep-Dive Examples
+
+The following section summarizes advanced analytics performed on three problem projects using the latest QC script. These examples illustrate how to use row-level outputs and anomaly checks to guide further investigation:
+
+### Project: K124-00-00-X041
+**ACTUALVALUE (first 5 rows):**
+### Project: K124-00-00-X041
+**Summary:**
+This project shows strong actual cost activity across multiple stages and substages, but the cost columns expected for QC (ACTUAL_COST, PLANNED_COST, FORECAST_COST) are missing from the output tables. This may indicate a schema or mapping issue in the ETL process. Planned and forecast data are present, but some values are zero or missing, which could signal incomplete planning or forecasting logic. Recommend reviewing the ETL schema and ensuring all cost fields are mapped and populated.
+**ACTUALVALUE (first 5 rows):**
+Row(PROJECT_NUMBER='K124-00-00-X041', STAGE='4', SUB_STAGE='C001', INVOICE_DATE=datetime.datetime(2025, 7, 9, 19, 0), ACTUALS_COST=2106008.0, ...)
+Row(PROJECT_NUMBER='K124-00-00-X041', STAGE='4', SUB_STAGE='C001', INVOICE_DATE=datetime.datetime(2025, 9, 8, 19, 0), ACTUALS_COST=16000.0, ...)
+Row(PROJECT_NUMBER='K124-00-00-X041', STAGE='4', SUB_STAGE='D001', INVOICE_DATE=datetime.datetime(2025, 7, 9, 19, 0), ACTUALS_COST=2106008.0, ...)
+Row(PROJECT_NUMBER='K124-00-00-X041', STAGE='4', SUB_STAGE='D001', INVOICE_DATE=datetime.datetime(2025, 9, 8, 19, 0), ACTUALS_COST=16000.0, ...)
+Row(PROJECT_NUMBER='K124-00-00-X041', STAGE='5', SUB_STAGE='C001', INVOICE_DATE=datetime.datetime(2025, 7, 9, 19, 0), ACTUALS_COST=2106008.0, ...)
+
+
+**PLANNEDVALUE (first 5 rows):**
+Row(PROJECT_NUMBER='K124-00-00-X041', STAGE='4', SUB_STAGE='D001', NORMALIZED_PERCENT=0.0, DATE=datetime.datetime(2024, 1, 17, 8, 0), ...)
+Row(PROJECT_NUMBER='K124-00-00-X041', STAGE='4', SUB_STAGE='D001', NORMALIZED_PERCENT=0.0067, DATE=datetime.datetime(2024, 1, 23, 8, 0), ...)
+...
+
+**FORECASTVALUE (first 5 rows):**
+Row(PROJECT_NUMBER='K124-00-00-X041', STAGE='4', SUB_STAGE='D001', FORECAST_DATE=datetime.datetime(2025, 10, 12, 8, 0), FORECAST_VALUE=0.0, ...)
+...
+
+**COMBINED_CURVES (first 5 rows):**
+Row(PROJECT_NUMBER='K124-00-00-X041', STAGE='4', SUB_STAGE='D001', DATE=datetime.datetime(2025, 10, 12, 8, 0), VALUE=2122008.0, TYPE='FORECAST')
+...
+
+**Anomaly Checks:**
+- No ACTUAL_COST, PLANNED_COST, or FORECAST_COST columns found for this project (may indicate schema or mapping issues).
+- Null and max value checks returned N/A.
+
+### Project: P118-25-00-E001
+**ACTUALVALUE (first 5 rows):**
+### Project: P118-25-00-E001
+**Summary:**
+This project has both actual and planned cost data, with some forecast values available. However, the cost columns used for QC are missing, so null and max value checks cannot be performed. The presence of planned and forecast data suggests the project is progressing, but missing cost fields may limit QC effectiveness. Recommend verifying that all cost columns are present in the ETL outputs and investigating any gaps in planned vs. actuals.
+**ACTUALVALUE (first 5 rows):**
+Row(PROJECT_NUMBER='P118-25-00-E001', STAGE='3', SUB_STAGE='B001', INVOICE_DATE=datetime.datetime(2025, 6, 25, 19, 0), ACTUALS_COST=5100.0, ...)
+...
+
+**PLANNEDVALUE (first 5 rows):**
+Row(PROJECT_NUMBER='P118-25-00-E001', STAGE='3', SUB_STAGE='B001', NORMALIZED_PERCENT=0.0, DATE=datetime.datetime(2020, 7, 27, 8, 0), ...)
+...
+
+**FORECASTVALUE (first 5 rows):**
+Row(PROJECT_NUMBER='P118-25-00-E001', STAGE='4', SUB_STAGE='C001', FORECAST_DATE=datetime.datetime(2025, 10, 15, 8, 0), FORECAST_VALUE=923517.93, ...)
+...
+
+**COMBINED_CURVES (first 5 rows):**
+Row(PROJECT_NUMBER='P118-25-00-E001', STAGE='3', SUB_STAGE='B001', DATE=datetime.datetime(2020, 7, 27, 8, 0), VALUE=0.0, TYPE='PLANNED')
+...
+
+**Anomaly Checks:**
+- No ACTUAL_COST, PLANNED_COST, or FORECAST_COST columns found for this project.
+- Null and max value checks returned N/A.
+
+### Project: A120-00-00-C003
+**ACTUALVALUE (first 5 rows):**
+### Project: A120-00-00-C003
+**Summary:**
+This project has planned values but no actual or forecast data. This may be expected for future or not-yet-started projects, or it could indicate missing actuals/forecasts due to eligibility or data issues. The absence of cost columns and forecast data means QC cannot fully assess this project. Recommend confirming whether this gap is valid per business logic, and if not, investigate why actuals and forecasts are missing.
+**ACTUALVALUE (first 5 rows):**
+(No actuals found)
+
+**PLANNEDVALUE (first 5 rows):**
+Row(PROJECT_NUMBER='A120-00-00-C003', STAGE='3', SUB_STAGE='I001', NORMALIZED_PERCENT=0.0, DATE=datetime.datetime(2012, 11, 13, 8, 0), ...)
+...
+
+**FORECASTVALUE (first 5 rows):**
+(No forecast found)
+
+**COMBINED_CURVES (first 5 rows):**
+Row(PROJECT_NUMBER='A120-00-00-C003', STAGE='3', SUB_STAGE='I001', DATE=datetime.datetime(2012, 11, 13, 8, 0), VALUE=0.0, TYPE='PLANNED')
+...
+
+**Anomaly Checks:**
+- No actuals or forecasts found for this project.
+- No PLANNED_COST column found.
+- Null ACTUAL_COST rows: 0, Null PLANNED_COST rows: N/A, Null FORECAST_COST rows: 0
+- Max ACTUAL_COST: None, Max PLANNED_COST: N/A, Max FORECAST_COST: None
+
 ---
+
+### Additional Thoughts & Recommendations
+
+- For projects with missing cost columns, review ETL schema mapping and ensure all expected fields are present in output tables.
+- For projects with no actuals or forecasts, confirm business logic and eligibility criteria; these may be valid gaps or require further investigation.
+- Use row-level outputs and anomaly checks to prioritize QC follow-up and root cause analysis.
+- Consider automating alerts for new or unexpected gaps in future QC runs.
+- Exporting full row-level outputs (as shown above) can help business users and analysts quickly identify and resolve data issues.
 
 
