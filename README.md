@@ -6,10 +6,10 @@ This project contains a set of Python scripts designed to work with Snowflake da
 
 The ETL forecasting system processes project financial data through four main components:
 
-1. **ACTUALVALUE.txt** - Processes historical actual costs
-2. **PLANNEDVALUE.txt** - Generates planned spending curves
-3. **FORECASTVALUE.txt** - Creates future cost forecasts
-4. **COMBINEDCURVES.txt** - Combines all data for unified reporting
+1. **ACTUALVALUE.py** - Processes historical actual costs and saves to `ACTUALVALUE`
+2. **PLANNEDVALUE.py** - Generates planned spending curves and saves to `PLANNEDVALUE`
+3. **FORECASTVALUE.py** - Creates future cost forecasts and saves to `FORECASTVALUE`
+4. **COMBINEDCURVES.py** - Combines all data for unified reporting and saves to `COMBINED_CURVES`
 
 ## File Descriptions
 
@@ -35,6 +35,42 @@ pdf["CUMULATIVE_ACTUAL_COST"] = (
 ```
 
 **Output Table**: `ACTUALVALUE` - Contains historical spending data with cumulative costs
+---
+
+## Quality Control (QC)
+
+To ensure consistency and integrity across the ETL workflow, use the provided QC scripts:
+
+### Python QC Script (`qc_check.py`)
+Checks row counts and key consistency between ACTUALVALUE, PLANNEDVALUE, FORECASTVALUE, and COMBINED_CURVES.
+
+**Usage:**
+1. Ensure you have Snowflake Snowpark Python installed and a valid session.
+2. Run `qc_check.py` in your environment, passing a valid Snowpark session.
+3. Review the printed QC report for row counts and key consistency.
+
+### SQL QC Script (`qc_check.sql`)
+Performs row count and join checks directly in Snowflake to identify missing or mismatched records.
+
+**Usage:**
+1. Open `qc_check.sql` in your SQL editor connected to Snowflake.
+2. Execute the script to see row counts, unique key counts, and missing keys between tables.
+
+---
+## QC Script Details
+
+### Python QC Script
+Located in `qc_check.py`. This script prints:
+- Row counts for each table
+- Unique key counts for ACTUALVALUE, PLANNEDVALUE, FORECASTVALUE
+- Keys present in one table but missing in another
+
+### SQL QC Script
+Located in `qc_check.sql`. This script outputs:
+- Row counts for each table
+- Unique key counts for each table
+- Keys in ACTUALVALUE but not in PLANNEDVALUE
+- Keys in PLANNEDVALUE but not in ACTUALVALUE
 
 ---
 
